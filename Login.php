@@ -31,28 +31,30 @@ if (isset($_POST["login"])) {
         try {
             $pdo = new PDO($dsn, $db['user'], $db['pass'], array(PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION));
 
-            $stmt = $pdo->prepare('SELECT * FROM userData WHERE name = ?');
+            $stmt = $pdo->prepare('SELECT * FROM User WHERE UserName = ?');
             $stmt->execute(array($userid));
 
             $password = $_POST["password"];
+            echo $password;
 
             if ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-                if (password_verify($password, $row['password'])) {
+                echo $row['Password'];
+                if (password_verify($password, $row['Password'])) {
                     session_regenerate_id(true);
 
                     // 入力したIDのユーザー名を取得
-                    $id = $row['id'];
-                    $sql = "SELECT * FROM userData WHERE id = $id";  //入力したIDからユーザー名を取得
+                    $id = $row['UserId'];
+                    $sql = "SELECT * FROM User WHERE UserId = $id";  //入力したIDからユーザー名を取得
                     $stmt = $pdo->query($sql);
                     foreach ($stmt as $row) {
-                        $row['name'];  // ユーザー名
+                        $row['UserName'];  // ユーザー名
                     }
-                    $_SESSION["NAME"] = $row['name'];
+                    $_SESSION["NAME"] = $row['UserName'];
                     header("Location: Main.php");  // メイン画面へ遷移
                     exit();  // 処理終了
                 } else {
                     // 認証失敗
-                    $errorMessage = 'ユーザーIDあるいはパスワードに誤りがあります。';
+                    $errorMessage = 'ユーザーIDあるいはパスワードに誤りがあります';
                 }
             } else {
                 // 4. 認証成功なら、セッションIDを新規に発行する
