@@ -50,6 +50,7 @@ if (isset($_POST["login"])) {
                         $row['UserName'];  // ユーザー名
                     }
                     $_SESSION["NAME"] = $row['UserName'];
+                    $_SESSION["ID"] = $row['UserId'];
                     header("Location: Main.php");  // メイン画面へ遷移
                     exit();  // 処理終了
                 } else {
