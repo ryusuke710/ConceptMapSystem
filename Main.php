@@ -6,6 +6,8 @@ $db['user'] = "root";  // ユーザー名
 $db['pass'] = "hogehoge";  // ユーザー名のパスワード
 $db['dbname'] = "test_db";  // データベース名
 
+$dsn = sprintf('mysql: host=%s; dbname=%s; charset=utf8', $db['host'], $db['dbname']);
+
 $userid = $_SESSION["ID"];
 
 $errorMessage = "";
@@ -27,7 +29,6 @@ if (!isset($_SESSION["NAME"])) {
         <h1>メイン画面</h1>
         <!-- ユーザーIDにHTMLタグが含まれても良いようにエスケープする -->
         <p>ようこそ<u><?php echo htmlspecialchars($_SESSION["NAME"], ENT_QUOTES); ?></u>さん</p>  <!-- ユーザー名をechoで表示 -->
-        <h2>マップ一覧</h2>
         <p>新規登録</p>
         <form id="MapRegist" name="MapRegist" action="" method="post">
           <label for="mapname">マップ名</label>
@@ -37,9 +38,20 @@ if (!isset($_SESSION["NAME"])) {
         </form>
         <?php
           if (isset($_POST["regist"])) {
-            if (empty($_POST["mapname"])) {
+            if (!empty($_POST["mapname"])) {
               // code...
-              $errorMessage = 'error';
+              $mapname = $_POST["mapname"];
+
+              try {
+                  $pdo = new PDO($dsn, $db['user'], $db['pass'], array(PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION));
+
+                  $stmt = $pdo->prepare("INSERT INTO ConceptMap(UserId, MapName) VALUES (?, ?)");
+                  $stmt->execute(array($userid, $mapname));
+                  $mapid = $pdo->lastinsertid();
+              } catch (PDOException $e) {
+                  $errorMessage = "DBerror";
+              }
+
             }
           } else {
             $errorMessage = 'a';
@@ -47,7 +59,6 @@ if (!isset($_SESSION["NAME"])) {
 
         ?>
         <?php
-          $dsn = sprintf('mysql: host=%s; dbname=%s; charset=utf8', $db['host'], $db['dbname']);
           $test="a";
           try {
             $pdo = new PDO($dsn, $db['user'], $db['pass'], array(PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION));
@@ -65,12 +76,13 @@ if (!isset($_SESSION["NAME"])) {
           }
 
         ?>
+        <h2>あなたのマップ</h2>
         <p><?php foreach ($rows as $value) {
           // code...
-          echo $value["MapName"];
+          echo $value["MapName"].'<br>';
         } ?></p>
-        <p><?php echo htmlspecialchars($userid, ENT_QUOTES); ?></p>
-        <p><?php echo $errorMessage; ?></p>
+        <p><?php echo $errorMessag; ?></p>
+        <p><?php echo $mapname; ?></p>
         <ul>
             <li><a href="Logout.php">ログアウト</a></li>
         </ul>
