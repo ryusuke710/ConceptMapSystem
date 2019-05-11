@@ -30,7 +30,7 @@ if (!isset($_SESSION["NAME"])) {
         <!-- ユーザーIDにHTMLタグが含まれても良いようにエスケープする -->
         <p>ようこそ<u><?php echo htmlspecialchars($_SESSION["NAME"], ENT_QUOTES); ?></u>さん</p>  <!-- ユーザー名をechoで表示 -->
         <p>新規登録</p>
-        <form id="MapRegist" name="MapRegist" action="" method="post">
+        <form id="MapRegist" name="MapRegist" action="MapEdit.php" method="post">
           <label for="mapname">マップ名</label>
           <input type="text" id="mapname" name="mapname" placeholder="マップ名を入力" value="<?php if (!empty($_POST["mapname"])) {echo htmlspecialchars($_POST["mapname"], ENT_QUOTES);} ?>">
           <br>
