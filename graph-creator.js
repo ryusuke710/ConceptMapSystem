@@ -584,7 +584,7 @@ document.onload = (function(d3, saveAs, Blob, undefined){
       height =  window.innerHeight|| docEl.clientHeight|| bodyEl.clientHeight;
 
   var xLoc = width/2 - 25,
-      yLoc = 100;
+      yLoc = 200;
 
   // initial node data
   var nodes = [{title: "new concept", id: 0, x: xLoc, y: yLoc},
@@ -595,7 +595,9 @@ document.onload = (function(d3, saveAs, Blob, undefined){
   /** MAIN SVG **/
   var svg = d3.select("body").append("svg")
         .attr("width", width)
-        .attr("height", height);
+        .attr("height", height)
+        .style("position", "absolute")
+        .style("top", 100);
   var graph = new GraphCreator(svg, nodes, edges);
       graph.setIdCt(2);
   graph.updateGraph();
