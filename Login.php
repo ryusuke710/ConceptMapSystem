@@ -1,12 +1,9 @@
 <?php
 require 'password.php';   // password_verfy()はphp 5.5.0以降の関数のため、バージョンが古くて使えない場合に使用
+require 'config.php'; //DB情報
+
 // セッション開始
 session_start();
-
-$db['host'] = "localhost";  // DBサーバのURL
-$db['user'] = "root";  // ユーザー名
-$db['pass'] = "hogehoge";  // ユーザー名のパスワード
-$db['dbname'] = "test_db";  // データベース名
 
 // エラーメッセージの初期化
 $errorMessage = "";
