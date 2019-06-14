@@ -20,29 +20,9 @@ echo $mapid;
 try {
   $pdo = new PDO($dsn, $db['user'], $db['pass'], array(PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION));
 
-  // $stmt = $pdo->prepare("INSERT INTO MapContents (Id, Title, x, y) VALUES (?, ?, ?, ?)");
-
-  // $arrayValues = "";
-  //
-  // foreach ($data as $array => $values) {
-  //   foreach ($values as $value) {
-  //     // code...
-  //     $id = $value["id"];
-  //     $title = $value["title"];
-  //     $x = $value["x"];
-  //     $y = $value["y"];
-  //
-  //     $arrayValues[] = "('{$id}', '{$title}', '{$x}', '{$y}')";
-  //   }
-  // }
-  //
-  // $stmt = $pdo->prepare("INSERT INTO MapContents (Id, Title, x, y) VALUES "
-  // .join(",", $arrayValues));
-
-  // $stmt = $pdo->prepare("UPDATE `json_test` SET col = (?)");
-
-  //sql文用意
-  $stmt = $pdo->prepare("INSERT INTO `json_test` (`MapId`, `col`) VALUES (?, ?)");
+  //sql準備 MapIdが重複していたらJSONのみをUPDATE
+  $stmt = $pdo->prepare("INSERT INTO `json_test` (`MapId`, `col`) VALUES (?, ?)
+    ON DUPLICATE KEY UPDATE `col` = VALUES(`col`)");
 
   //$mapid->コンセプトマップID，$json_data->マップ情報
   //渡すパラメータ1つ（配列）
@@ -53,3 +33,4 @@ try {
 }
 
 $pdo = null;
+?>

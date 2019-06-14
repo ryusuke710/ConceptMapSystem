@@ -4,6 +4,7 @@ document.onload = (function(d3, saveAs, Blob, undefined){
   // define graphcreator object
   var GraphCreator = function(svg, nodes, edges){
     var thisGraph = this;
+    console.log(this);
     thisGraph.idct = 0;
 
     thisGraph.nodes = nodes || [];
@@ -18,7 +19,8 @@ document.onload = (function(d3, saveAs, Blob, undefined){
       justScaleTransGraph: false,
       lastKeyDown: -1,
       shiftNodeDrag: false,
-      selectedText: null
+      selectedText: null,
+      activeComparing: false
     };
 
     // define arrow markers for graph links
@@ -124,10 +126,17 @@ document.onload = (function(d3, saveAs, Blob, undefined){
       $.ajax({
         type: "POST",
         url: "test.php",
-        data: {data:JSON.stringify({'nodes': thisGraph.nodes, "edges": saveEdges})},
+        data: {data:JSON.stringify({"nodes": thisGraph.nodes, "edges": saveEdges})},
       }).done(function( msg ) {
         console.log(msg);
       });
+
+      /* MapEdit.php からMapIdを取得 */
+      //JQuery使って属性を取得する、JSON.parseで扱える形に変換
+      var $script = $('#script');
+      var result = JSON.parse($script.attr('data-param'));
+      //確認
+      console.log(result);
 
       var blob = new Blob([window.JSON.stringify({"nodes": thisGraph.nodes, "edges": saveEdges})], {type: "text/plain;charset=utf-8"});
       // saveAs(blob, "mydag.json");
@@ -136,38 +145,51 @@ document.onload = (function(d3, saveAs, Blob, undefined){
 
     // handle uploaded data
     d3.select("#upload-input").on("click", function(){
-      document.getElementById("hidden-file-upload").click();
-    });
-    d3.select("#hidden-file-upload").on("change", function(){
-      if (window.File && window.FileReader && window.FileList && window.Blob) {
-        var uploadFile = this.files[0];
-        var filereader = new window.FileReader();
+      //   document.getElementById("hidden-file-upload").click();
+      // });
+      // d3.select("#hidden-file-upload").on("change", function(){
+      // if (window.File && window.FileReader && window.FileList && window.Blob) {
+      //   var uploadFile = this.files[0];
+      //   var filereader = new window.FileReader();
+      //
+      //   filereader.onload = function(){
+      //     var txtRes = filereader.result;
+      //     console.log(txtRes);
+      //     // TODO better error handling
+      //     try{
+      //       var jsonObj = JSON.parse(txtRes);
+      //       thisGraph.deleteGraph(true);
+      //       thisGraph.nodes = jsonObj.nodes;
+      //       thisGraph.setIdCt(jsonObj.nodes.length + 1);
+      //       var newEdges = jsonObj.edges;
+      //       newEdges.forEach(function(e, i){
+      //         newEdges[i] = {source: thisGraph.nodes.filter(function(n){return n.id == e.source;})[0],
+      //         target: thisGraph.nodes.filter(function(n){return n.id == e.target;})[0]};
+      //       });
+      //       thisGraph.edges = newEdges;
+      //       thisGraph.updateGraph();
+      //     }catch(err){
+      //       window.alert("Error parsing uploaded file\nerror message: " + err.message);
+      //       return;
+      //     }
+      //   };
+      //   filereader.readAsText(uploadFile);
+      //
+      // } else {
+      //   alert("Your browser won't let you save this graph -- try upgrading your browser to IE 10+ or Chrome or Firefox.");
+      // }
 
-        filereader.onload = function(){
-          var txtRes = filereader.result;
-          // TODO better error handling
-          try{
-            var jsonObj = JSON.parse(txtRes);
-            thisGraph.deleteGraph(true);
-            thisGraph.nodes = jsonObj.nodes;
-            thisGraph.setIdCt(jsonObj.nodes.length + 1);
-            var newEdges = jsonObj.edges;
-            newEdges.forEach(function(e, i){
-              newEdges[i] = {source: thisGraph.nodes.filter(function(n){return n.id == e.source;})[0],
-              target: thisGraph.nodes.filter(function(n){return n.id == e.target;})[0]};
-            });
-            thisGraph.edges = newEdges;
-            thisGraph.updateGraph();
-          }catch(err){
-            window.alert("Error parsing uploaded file\nerror message: " + err.message);
-            return;
-          }
-        };
-        filereader.readAsText(uploadFile);
+      // add
+      $.ajax({
+        type: "POST",
+        url: "MapSearch.php",
+        data: {data: 1}
+      }).done(function( msg ) {
+        // var jsonObj = JSON.parse(msg);
 
-      } else {
-        alert("Your browser won't let you save this graph -- try upgrading your browser to IE 10+ or Chrome or Firefox.");
-      }
+        thisGraph.mapupload(msg);
+        // thisGraph.deleteGraph(true);
+      });
 
     });
 
@@ -175,6 +197,119 @@ document.onload = (function(d3, saveAs, Blob, undefined){
     d3.select("#delete-graph").on("click", function(){
       thisGraph.deleteGraph(false);
     });
+  };
+
+  var GraphCreator2 = function(svg, nodes, edges){
+    var thisGraph = this;
+    console.log(this);
+    thisGraph.idct = 0;
+
+    thisGraph.nodes = nodes || [];
+    thisGraph.edges = edges || [];
+
+    thisGraph.state = {
+      selectedNode: null,
+      selectedEdge: null,
+      mouseDownNode: null,
+      mouseDownLink: null,
+      justDragged: false,
+      justScaleTransGraph: false,
+      lastKeyDown: -1,
+      shiftNodeDrag: false,
+      selectedText: null
+    };
+
+    // define arrow markers for graph links
+    var defs = svg.append('svg:defs');
+    defs.append('svg:marker')
+    .attr('id', 'end-arrow')
+    .attr('viewBox', '0 -5 10 10')
+    .attr('refX', "32")
+    .attr('markerWidth', 3.5)
+    .attr('markerHeight', 3.5)
+    .attr('orient', 'auto')
+    .append('svg:path')
+    .attr('d', 'M0,-5L10,0L0,5'); //矢印の先の設定？
+
+    // define arrow markers for leading arrow
+    defs.append('svg:marker')
+    .attr('id', 'mark-end-arrow')
+    .attr('viewBox', '0 -5 10 10')
+    .attr('refX', 7)
+    .attr('markerWidth', 3.5)
+    .attr('markerHeight', 3.5)
+    .attr('orient', 'auto')
+    .append('svg:path')
+    .attr('d', 'M0,-5L10,0L0,5'); //矢印の設定ぽい
+
+    thisGraph.svg = svg;
+    //thisGraph.consts.graphClassというクラスを"svgG"に設定
+    thisGraph.svgG = svg.append("g")
+    .classed("graph2", true);
+
+    var svgG = thisGraph.svgG;
+
+    // displayed when dragging between nodes
+    thisGraph.dragLine = svgG.append('svg:path')
+    .attr('class', 'link dragline hidden')
+    .attr('d', 'M0,0L0,0')
+    .style('marker-end', 'url(#mark-end-arrow)');
+
+    // svg nodes and edges
+    thisGraph.paths = svgG.append("g").selectAll("g");
+    thisGraph.circles = svgG.append("g").selectAll("g");
+
+    // thisGraph.drag = d3.behavior.drag()
+    // .origin(function(d){
+    //   return {x: d.x, y: d.y};
+    // })
+    // .on("drag", function(args){
+    //   thisGraph.state.justDragged = true;
+    //   thisGraph.dragmove.call(thisGraph, args);
+    // })
+    // .on("dragend", function() {
+    //   // todo check if edge-mode is selected
+    // });
+    //
+    // // listen for key events
+    // //keyが押された時svgKeyDown呼ぶ
+    // d3.select(window).on("keydown", function(){
+    //   thisGraph.svgKeyDown.call(thisGraph);
+    // })
+    // .on("keyup", function(){
+    //   thisGraph.svgKeyUp.call(thisGraph);
+    // });
+    //mouseが押された時メソッドの呼び出し
+    // svg.on("mousedown", function(d){thisGraph.svgMouseDown.call(thisGraph, d);});
+    // svg.on("mouseup", function(d){thisGraph.svgMouseUp.call(thisGraph, d);});
+    //
+    // // listen for dragging
+    // var dragSvg = d3.behavior.zoom()
+    // .on("zoom", function(){
+    //   if (d3.event.sourceEvent.shiftKey){
+    //     // TODO  the internal d3 state is still changing
+    //     return false;
+    //   } else{
+    //     thisGraph.zoomed.call(thisGraph);
+    //   }
+    //   return true;
+    // })
+    // .on("zoomstart", function(){
+    //   var ael = d3.select("#" + thisGraph.consts.activeEditId).node();
+    //   if (ael){
+    //     ael.blur();
+    //   }
+    //   if (!d3.event.sourceEvent.shiftKey) d3.select('body').style("cursor", "move");
+    // })
+    // .on("zoomend", function(){
+    //   d3.select('body').style("cursor", "auto");
+    // });
+    //
+    // svg.call(dragSvg).on("dblclick.zoom", null);
+
+    // listen for resize
+    // window.onresize = function(){thisGraph.updateWindow(svg);};
+
   };
 
   GraphCreator.prototype.setIdCt = function(idct){
@@ -193,13 +328,143 @@ document.onload = (function(d3, saveAs, Blob, undefined){
     nodeRadius: 50
   };
 
+  GraphCreator2.prototype.setIdCt = function(idct){
+    this.idct = idct;
+  };
+
+  GraphCreator2.prototype.consts =  {
+    selectedClass: "selected",
+    connectClass: "connect-node",
+    circleGClass: "conceptG",
+    graphClass: "graph",
+    activeEditId: "active-editing",
+    BACKSPACE_KEY: 8,
+    DELETE_KEY: 46,
+    ENTER_KEY: 13,
+    nodeRadius: 50
+  };
+
+  document.getElementById("test").onclick = function() {
+    //比較モードON
+    graph.state.activeComparing = true;
+    //自身のグラフのSVGを縮小
+    graph.updateWindow(svg);
+    //比較対象のグラフのSVGを有効化
+    svg2.style("visibility", "visible");
+
+    // 比較対象のグラフの内容を非同期通信で取得
+    CompareMapUpload();
+
+    //終了ラベルの取得
+    var endBtn = document.getElementById("Compare-list");
+    //中央線の取得
+    var border = document.getElementById("border-line");
+    var OthersLabel = document.getElementById("Others");
+    var MyMapLabel = document.getElementById("MyMap");
+
+    //各要素の有効化
+    if (endBtn.style.visibility == "hidden") {
+      endBtn.style.visibility = "visible";
+      border.style.visibility = "visible";
+      OthersLabel.style.visibility = "visible";
+      MyMapLabel.style.visibility = "visible";
+    }
+
+  }
+
+  // document.getElementById("end").onclick = function() {
+  //   console.log("aaa");
+  // }
+
+  // 比較終了ボタン（仮）
+  d3.select('#end').on("click", function() {
+
+    //比較モードOFF
+    graph.state.activeComparing = false;
+    //ウィンドウサイズを最大にする
+    graph.updateWindow(svg);
+
+    // 各要素取得
+    var endBtn = document.getElementById("Compare-list");
+    var border = document.getElementById("border-line");
+    var OthersLabel = document.getElementById("Others");
+    var MyMapLabel = document.getElementById("MyMap");
+
+    // グラフ内容を削除
+    graph2.deleteGraph(true);
+    // 比較対象のグラフのSVGを無効化
+    svg2.style("visibility", "hidden");
+
+    // 各要素の無効化
+    if (endBtn.style.visibility == "visible") {
+      endBtn.style.visibility = "hidden";
+      border.style.visibility = "hidden";
+      OthersLabel.style.visibility = "hidden";
+      MyMapLabel.style.visibility = "hidden";
+    }
+  });
+
+  document.getElementById("NextMap").onclick = function() {
+    CompareMapUpload();
+  }
+
   /* PROTOTYPE FUNCTIONS */
+
+  //add FUNCTIONS
+  var CompareMapUpload = function() {
+    // 比較対象のグラフの内容を非同期通信で取得
+    $.ajax({
+      type: "POST",
+      url: "MapSearch.php"
+      // data: {data: 1}
+    }).done(function( msg ) {
+      graph2.mapupload(msg);
+    });
+
+    //比較用のマップを出力するSVGの高さを整数型で取得(translateで使用できるようにするため)
+    var svgH = parseInt(svg2.style("height"));
+
+    d3.select(".graph2")
+    .attr("transform", "translate(" + [0, (svgH/4)] + ") scale(" + 0.5 + ")");
+
+    d3.select(".graph")
+    .attr("transform", "translate(" + [0, (svgH/4)] + ") scale(" + 0.5 + ")");
+  };
+
+  GraphCreator2.prototype.mapupload = function(jsonObj) {
+    var thisGraph = this;
+
+    try {
+      var MapContents = JSON.parse(jsonObj);
+      thisGraph.deleteGraph(true);
+      thisGraph.nodes = MapContents.nodes;
+      thisGraph.setIdCt(MapContents.nodes.length + 1);
+      var newEdges = MapContents.edges;
+      newEdges.forEach(function(e, i){
+        newEdges[i] = {source: thisGraph.nodes.filter(function(n){return n.id == e.source;})[0],
+        target: thisGraph.nodes.filter(function(n){return n.id == e.target;})[0]};
+      });
+      thisGraph.edges = newEdges;
+      thisGraph.updateGraph();
+    } catch (err) {
+      window.alert("Error parsing uploaded file\nerror message: " + err.message);
+      return;
+    }
+  };
 
   GraphCreator.prototype.dragmove = function(d) {
     var thisGraph = this;
     if (thisGraph.state.shiftNodeDrag){
       thisGraph.dragLine.attr('d', 'M' + d.x + ',' + d.y + 'L' + d3.mouse(thisGraph.svgG.node())[0] + ',' + d3.mouse(this.svgG.node())[1]);
-    } else{
+    } else {
+      //画面外の処理
+      if (d.x < 50) {
+        d.x += 10;
+        return;
+      } else if (d.y < 55) {
+        d.y += 10;
+        return;
+      }
       d.x += d3.event.dx;
       d.y +=  d3.event.dy;
       thisGraph.updateGraph();
@@ -207,6 +472,19 @@ document.onload = (function(d3, saveAs, Blob, undefined){
   };
 
   GraphCreator.prototype.deleteGraph = function(skipPrompt){
+    var thisGraph = this,
+    doDelete = true;
+    if (!skipPrompt){
+      doDelete = window.confirm("Press OK to delete this graph");
+    }
+    if(doDelete){
+      thisGraph.nodes = [];
+      thisGraph.edges = [];
+      thisGraph.updateGraph();
+    }
+  };
+
+  GraphCreator2.prototype.deleteGraph = function(skipPrompt){
     var thisGraph = this,
     doDelete = true;
     if (!skipPrompt){
@@ -228,7 +506,6 @@ document.onload = (function(d3, saveAs, Blob, undefined){
     sel.addRange(range);
   };
 
-
   /* insert svg line breaks: taken from http://stackoverflow.com/questions/13241475/how-do-i-include-newlines-in-labels-in-d3-charts */
   GraphCreator.prototype.insertTitleLinebreaks = function (gEl, title) {
     var words = title.split(/\s+/g),
@@ -243,7 +520,19 @@ document.onload = (function(d3, saveAs, Blob, undefined){
       tspan.attr('x', 0).attr('dy', '15');
     }
   };
+  GraphCreator2.prototype.insertTitleLinebreaks = function (gEl, title) {
+    var words = title.split(/\s+/g),
+    nwords = words.length;
+    var el = gEl.append("text")
+    .attr("text-anchor","middle")
+    .attr("dy", "-" + (nwords-1)*7.5);
 
+    for (var i = 0; i < words.length; i++) {
+      var tspan = el.append('tspan').text(words[i]);
+      if (i > 0)
+      tspan.attr('x', 0).attr('dy', '15');
+    }
+  };
 
   // remove edges associated with a node
   GraphCreator.prototype.spliceLinksForNode = function(node) {
@@ -507,6 +796,7 @@ document.onload = (function(d3, saveAs, Blob, undefined){
       return d === state.selectedEdge;
     })
     .attr("d", function(d){
+      console.log(d.source.x);
       return "M" + d.source.x + "," + d.source.y + "L" + d.target.x + "," + d.target.y;
     });
 
@@ -566,19 +856,110 @@ document.onload = (function(d3, saveAs, Blob, undefined){
   thisGraph.circles.exit().remove();
 };
 
+GraphCreator2.prototype.updateGraph = function(){
+
+  var thisGraph = this,
+  consts = thisGraph.consts,
+  state = thisGraph.state;
+
+  thisGraph.paths = thisGraph.paths.data(thisGraph.edges, function(d){
+    return String(d.source.id) + "+" + String(d.target.id);
+  });
+  var paths = thisGraph.paths;
+  // update existing paths
+  paths.style('marker-end', 'url(#end-arrow)')
+  .classed(consts.selectedClass, function(d){
+    return d === state.selectedEdge;
+  })
+  .attr("d", function(d){
+    return "M" + d.source.x + "," + d.source.y + "L" + d.target.x + "," + d.target.y;
+  });
+
+  // add new paths
+  paths.enter()
+  .append("path")
+  .style('marker-end','url(#end-arrow)')
+  .classed("link", true)
+  .attr("d", function(d){
+    return "M" + d.source.x + "," + d.source.y + "L" + d.target.x + "," + d.target.y;
+  })
+  .on("mousedown", function(d){
+    thisGraph.pathMouseDown.call(thisGraph, d3.select(this), d);
+  }
+)
+.on("mouseup", function(d){
+  state.mouseDownLink = null;
+});
+
+// remove old links
+paths.exit().remove();
+
+// update existing nodes
+thisGraph.circles = thisGraph.circles.data(thisGraph.nodes, function(d){ return d.id;});
+thisGraph.circles.attr("transform", function(d){return "translate(" + d.x + "," + d.y + ")";});
+
+// add new nodes
+var newGs= thisGraph.circles.enter()
+.append("g");
+
+newGs.classed(consts.circleGClass, true)
+.attr("transform", function(d){return "translate(" + d.x + "," + d.y + ")";});
+// .on("mouseover", function(d){
+//   if (state.shiftNodeDrag){
+//     d3.select(this).classed(consts.connectClass, true);
+//   }
+// })
+// .on("mouseout", function(d){
+//   d3.select(this).classed(consts.connectClass, false);
+// })
+// .on("mousedown", function(d){
+//   thisGraph.circleMouseDown.call(thisGraph, d3.select(this), d);
+// })
+// .on("mouseup", function(d){
+//   thisGraph.circleMouseUp.call(thisGraph, d3.select(this), d);
+// })
+// .call(thisGraph.drag);
+
+newGs.append("circle")
+.attr("r", String(consts.nodeRadius));
+
+newGs.each(function(d){
+  thisGraph.insertTitleLinebreaks(d3.select(this), d.title);
+});
+
+// remove old nodes
+thisGraph.circles.exit().remove();
+};
+
 GraphCreator.prototype.zoomed = function(){
   this.state.justScaleTransGraph = true;
+  console.log(d3.event.translate);
+  console.log(d3.event.scale);
   d3.select("." + this.consts.graphClass)
   .attr("transform", "translate(" + d3.event.translate + ") scale(" + d3.event.scale + ")");
 };
 
 GraphCreator.prototype.updateWindow = function(svg){
+  var thisGraph = this;
   var docEl = document.documentElement,
   bodyEl = document.getElementsByTagName('body')[0];
   var x = window.innerWidth || docEl.clientWidth || bodyEl.clientWidth;
   var y = window.innerHeight|| docEl.clientHeight|| bodyEl.clientHeight;
-  svg.attr("width", x).attr("height", y);
+
+  if (this.state.activeComparing) {
+    svg.attr("width", x / 2).attr("height", y);
+  } else {
+    svg.attr("width", x).attr("height", y);
+  }
+
 };
+// GraphCreator2.prototype.updateWindow = function(svg){
+//   var docEl = document.documentElement,
+//   bodyEl = document.getElementsByTagName('body')[0];
+//   var x = window.innerWidth || docEl.clientWidth || bodyEl.clientWidth;
+//   var y = window.innerHeight|| docEl.clientHeight|| bodyEl.clientHeight;
+//   svg.attr("width", x / 2).attr("height", y);
+// };
 
 
 
@@ -595,22 +976,41 @@ bodyEl = document.getElementsByTagName('body')[0];
 var width = window.innerWidth || docEl.clientWidth || bodyEl.clientWidth,
 height =  window.innerHeight|| docEl.clientHeight|| bodyEl.clientHeight;
 
-var xLoc = width/2 - 25,
+var xLoc = width / 3,
 yLoc = 200;
 
 // initial node data
-var nodes = [{id: 0, title: "new concept0", x: xLoc, y: yLoc},
-{id: 1, title:"new concept1", x: xLoc, y: yLoc + 200}];
+var nodes = [{id: 0, title: "new concept", x: xLoc, y: yLoc},
+{id: 1, title:"new concept", x: xLoc, y: yLoc + 200}];
 var edges = [{source: nodes[1], target: nodes[0]}];
+
+var nodes2 = [{id: 0, title: "new concept1", x: xLoc - 200, y: yLoc},
+{id: 1, title:"new concept", x: xLoc, y: yLoc + 200}];
+var edges2 = [{source: nodes2[1], target: nodes2[0]}];
 
 
 /** MAIN SVG **/
 var svg = d3.select("body").append("svg")
 .attr("width", width)
 .attr("height", height)
-.style("position", "absolute")
+.attr("id", "svg")
+.style("position", "relative")
 .style("top", 100);
+
 var graph = new GraphCreator(svg, nodes, edges);
 graph.setIdCt(2);
 graph.updateGraph();
+
+var svg2 = d3.select("body").append("svg")
+.attr("width", width / 2)
+.attr("height", height)
+.attr("id", "svg2")
+.style("position", "relative")
+.style("top", 100)
+.style("background-color", "white");
+
+//比較対象のグラフ作成
+var graph2 = new GraphCreator2(svg2, nodes2, edges2);
+graph2.setIdCt(2);
+graph2.updateGraph();
 })(window.d3, window.saveAs, window.Blob);
