@@ -60,6 +60,7 @@ marker{
 g.conceptG circle{
     fill: #F6FBFF;
     stroke: #333;
+    /* stroke: orange; */
     stroke-width: 2px;
 }
 
@@ -72,6 +73,15 @@ g.selected circle{
 }
 g.selected:hover circle{
     fill: rgb(250, 232, 255);
+}
+
+/* 追加 他者のマップから追加されたノード */
+g.added circle {
+  fill: rgb(255, 0, 0);
+}
+
+g.marked circle {
+  stroke: red;
 }
 
 path.link {
@@ -155,4 +165,39 @@ header {
   left: 70%;
   visibility: hidden;
   z-index: 1;
+}
+
+.conclude-list {
+  position: absolute;
+  top: 50;
+  width: 100%;
+  height: 90px;
+  visibility: hidden;
+}
+
+.conclude-list textarea {
+  width: 80%;
+  height: 100%;
+  font-size: 25px;
+}
+
+.conclude-list input {
+  position: absolute;
+  top: 30px;
+  width: 100px;
+  height: 50px;
+  font-size: 20px;
+  border-radius: 5px;
+  margin-left: 30px;
+  /* top: 45px; */
+}
+
+/* text {
+  font: 12px sans-serif;
+  pointer-events: none;
+} */
+
+text.id {
+  text-anchor: middle;
+  font-weight: bold;
 }

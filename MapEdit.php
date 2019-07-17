@@ -21,12 +21,12 @@ function json_safe_encode($data){
 <body>
   <header>
     <nav class="header-list">
-      <ul class="MainFunc">
+      <ul class="MainFunc" id="MainFunc">
         <li><a href="#" id="download-input">保存</a></li>
-        <li><a href="#" id="upload-input">比較</a></li>
+        <li><a href="#" id="compare-map">比較</a></li>
         <li><a href="#" id="delete-graph">削除</a></li>
         <li><a href="#" id="test">いいね一覧</a></li>
-        <li>結論</li>
+        <li><a href="#" id="conclude">結論</a></li>
       </ul>
       <div id="border-line" class="border-line"></div>
       <ul class="Compare-list" id="Compare-list" style="visibility: hidden;">
@@ -35,6 +35,12 @@ function json_safe_encode($data){
       </ul>
     </nav>
   </header>
+
+  <div class="conclude-list" id="conclude-list">
+    <textarea id="concludeArea" class="concludeArea" rows="8" cols="80"></textarea>
+    <!-- <label id="concludeFin" class="concludeFin">完了</label> -->
+    <input id="concludeFin" type="button" name="" value="完了">
+  </div>
 
   <!-- <div id="toolbox">
     <input type="file" id="hidden-file-upload"><input type="image" title="upload graph" src="upload-icon.png" alt="upload graph"> <input type="image" id="" title="download graph" src="download-icon.png" alt="download graph"> <input type="image" id="delete-graph" title="delete graph" src="trash-icon.png" alt="delete graph">

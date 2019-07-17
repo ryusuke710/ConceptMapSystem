@@ -32,5 +32,6 @@ try {
   echo $e;
 }
 
+// 接続終了
 $pdo = null;
 ?>

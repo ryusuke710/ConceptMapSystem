@@ -1,15 +1,17 @@
 <?php
 require 'config.php';
 
+session_start();
+
 $dsn = sprintf('mysql: host=%s; dbname=%s; charset=utf8', $db['host'], $db['dbname']);
 
-// $mapid = $_POST['data'];
+$mapid = $_SESSION['mapid'];
 
 try {
   $pdo = new PDO($dsn, $db['user'], $db['pass'], array(PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION));
 
   // $stmt = $pdo->prepare("SELECT `col` FROM `json_test` WHERE `MapId` = $mapid");
-  $stmt = $pdo->prepare("SELECT `col` FROM `json_test` ORDER BY RAND() LIMIT 1");
+  $stmt = $pdo->prepare("SELECT `col` FROM `json_test` WHERE `MapId` = $mapid");
 
   $stmt->execute();
 
