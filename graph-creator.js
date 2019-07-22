@@ -127,21 +127,6 @@ document.onload = (function(d3, saveAs, Blob, undefined){
 
     // handle download data
     d3.select("#download-input").on("click", function(){
-      // var saveEdges = [];
-      // thisGraph.edges.forEach(function(val, i){
-      //   saveEdges.push({id: val.id, source: val.source.id, target: val.target.id, label: val.label});
-      // });
-      //
-      // // add
-      // $.ajax({
-      //   type: "POST",
-      //   url: "test.php",
-      //   datatype: 'json',
-      //   data: {data:JSON.stringify({edges: saveEdges, nodes: thisGraph.nodes})},
-      // }).done(function( msg ) {
-      //   console.log(msg);
-      // });
-
       thisGraph.RegistMap();
 
       /* MapEdit.php からMapIdを取得 */
@@ -150,47 +135,11 @@ document.onload = (function(d3, saveAs, Blob, undefined){
       var result = JSON.parse($script.attr('data-param'));
       //確認
       console.log(result);
-
-      // var blob = new Blob([window.JSON.stringify({"nodes": thisGraph.nodes, "edges": saveEdges})], {type: "text/plain;charset=utf-8"});
-      // saveAs(blob, "mydag.json");
     });
 
 
     // handle uploaded data
     d3.select("#upload-input").on("click", function(){
-      //   document.getElementById("hidden-file-upload").click();
-      // });
-      // d3.select("#hidden-file-upload").on("change", function(){
-      // if (window.File && window.FileReader && window.FileList && window.Blob) {
-      //   var uploadFile = this.files[0];
-      //   var filereader = new window.FileReader();
-      //
-      //   filereader.onload = function(){
-      //     var txtRes = filereader.result;
-      //     console.log(txtRes);
-      //     // TODO better error handling
-      //     try{
-      //       var jsonObj = JSON.parse(txtRes);
-      //       thisGraph.deleteGraph(true);
-      //       thisGraph.nodes = jsonObj.nodes;
-      //       thisGraph.setIdCt(jsonObj.nodes.length + 1);
-      //       var newEdges = jsonObj.edges;
-      //       newEdges.forEach(function(e, i){
-      //         newEdges[i] = {source: thisGraph.nodes.filter(function(n){return n.id == e.source;})[0],
-      //         target: thisGraph.nodes.filter(function(n){return n.id == e.target;})[0]};
-      //       });
-      //       thisGraph.edges = newEdges;
-      //       thisGraph.updateGraph();
-      //     }catch(err){
-      //       window.alert("Error parsing uploaded file\nerror message: " + err.message);
-      //       return;
-      //     }
-      //   };
-      //   filereader.readAsText(uploadFile);
-      //
-      // } else {
-      //   alert("Your browser won't let you save this graph -- try upgrading your browser to IE 10+ or Chrome or Firefox.");
-      // }
 
       // add
       $.ajax({
@@ -481,6 +430,8 @@ document.onload = (function(d3, saveAs, Blob, undefined){
         }
       } else {
         window.alert("Hello");
+        // マップ情報がない場合新規登録
+        thisGraph.RegistMap();
       }
     });
   };
@@ -502,32 +453,6 @@ document.onload = (function(d3, saveAs, Blob, undefined){
       console.log(msg);
     });
   };
-
-  // GraphCreator.prototype.mapupload = function() {
-  //   var thisGraph = this;
-  //
-  //   try {
-  //     var MapContents = JSON.parse(jsonObj);
-  //     thisGraph.deleteGraph(true);
-  //     thisGraph.nodes = MapContents.nodes;
-  //     // console.log(thisGraph.nodes);
-  //     thisGraph.setIdCt(MapContents.nodes.length + 1);
-  //     var newEdges = MapContents.edges;
-  //     newEdges.forEach(function(e, i){
-  //       newEdges[i] = {
-  //         id: e.id,
-  //         label: e.label,
-  //         source: thisGraph.nodes.filter(function(n){return n.id == e.source;})[0],
-  //         target: thisGraph.nodes.filter(function(n){return n.id == e.target;})[0],
-  //       };
-  //     });
-  //     thisGraph.edges = newEdges;
-  //     thisGraph.updateGraph();
-  //   } catch (err) {
-  //     window.alert("Error parsing uploaded file\nerror message: " + err.message);
-  //     return;
-  //   }
-  // };
 
   GraphCreator.prototype.dragmove = function(d) {
     var thisGraph = this;
@@ -638,8 +563,14 @@ document.onload = (function(d3, saveAs, Blob, undefined){
   GraphCreator.prototype.checkMarkNode = function(d3Node) {
     if (!d3Node.classed("marked")) {
       d3Node.classed(this.consts.markedClass, true);
+      d3Node.filter(function(cd) {
+        cd.conc = true;
+      });
     } else {
       d3Node.classed(this.consts.markedClass, false);
+      d3Node.filter(function(cd) {
+        cd.conc = false;
+      });
     }
   };
 
@@ -801,7 +732,7 @@ document.onload = (function(d3, saveAs, Blob, undefined){
     } else if (state.graphMouseDown && d3.event.shiftKey){
       // clicked not dragged from svg
       var xycoords = d3.mouse(thisGraph.svgG.node()),
-      d = {id: thisGraph.idct++, title: "new concept", x: xycoords[0], y: xycoords[1]};
+      d = {id: thisGraph.idct++, title: "new concept", x: xycoords[0], y: xycoords[1], add: false, conc: false};
       thisGraph.nodes.push(d);
       thisGraph.updateGraph();
       // make title of text immediently editable
@@ -864,7 +795,7 @@ document.onload = (function(d3, saveAs, Blob, undefined){
 
     // d3AddNode.classed(this.consts.addedClass, true);
 
-    var d = {id: thisGraph.idct++, title: d3AddNode.title, x: d3AddNode.x, y: d3AddNode.y};
+    var d = {id: thisGraph.idct++, title: d3AddNode.title, x: d3AddNode.x, y: d3AddNode.y, add: true, conc: false};
     thisGraph.nodes.push(d);
     // console.log(thisGraph.nodes[d.id]);
     thisGraph.updateGraph();
@@ -1008,6 +939,14 @@ document.onload = (function(d3, saveAs, Blob, undefined){
     // add new nodes
     var newGs= thisGraph.circles.enter()
     .append("g");
+
+    // 追加，結論時に設定したノードデータから描画の設定をする
+    newGs.filter(function(cd){
+      return cd.add === true;
+    }).classed(thisGraph.consts.addedClass, true);
+    newGs.filter(function(cd){
+      return cd.conc === true;
+    }).classed(thisGraph.consts.markedClass, true);
 
     newGs.classed(consts.circleGClass, true)
     .attr("transform", function(d){return "translate(" + d.x + "," + d.y + ")";})
@@ -1372,8 +1311,7 @@ var svg = d3.select("body").append("svg")
 
 var graph = new GraphCreator(svg, nodes, edges);
 graph.MapUpload();
-graph.RegistMap();
-// graph.updateGraph();
+// graph.RegistMap();
 
 var svg2 = d3.select("body").append("svg")
 .attr("width", width / 2)
